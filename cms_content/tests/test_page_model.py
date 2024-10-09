@@ -52,3 +52,66 @@ class PageModelTests(TestCase):
         with self.assertRaises(Page.DoesNotExist):
             Page.objects.get(id=page_id)
         logger.debug("Finished test_page_deletion_removes_page")
+
+    def test_page_creation_with_different_statuses(self):
+        logger.debug("Starting page_creation_with_different_statuses")
+        statuses = ['draft', 'published', 'private']
+        for status in statuses:
+            page = Page.objects.create(title=f"Test Page {status}", content="Test Content", page_status=status)
+            self.assertEqual(page.page_status, status)
+        logger.debug("Finished page_creation_with_different_statuses")
+
+    def test_page_creation_with_different_link_locations(self):
+        logger.debug("Starting page_creation_with_different_link_locations")
+        locations = ['navbar', 'header', 'footer', 'sidebar', 'unsorted']
+        for location in locations:
+            page = Page.objects.create(title=f"Test Page {location}", content="Test Content", page_link_location=location)
+            self.assertEqual(page.page_link_location, location)
+        logger.debug("Finished page_creation_with_different_link_locations")
+
+    def test_page_slug_generation_without_parent(self):
+        logger.debug("Starting page_slug_generation_without_parent")
+        page = Page.objects.create(title="Test Page", content="Test Content")
+        self.assertEqual(page.slug, "test-page")
+        logger.debug("Finished page_slug_generation_without_parent")
+
+    def test_page_slug_generation_with_parent(self):
+        logger.debug("Starting page_slug_generation_with_parent")
+        parent_page = Page.objects.create(title="Parent Page", content="Parent Content")
+        child_page = Page.objects.create(title="Child Page", content="Child Content", parent=parent_page)
+        self.assertEqual(child_page.slug, "parent-page/child-page")
+        logger.debug("Finished page_slug_generation_with_parent")
+
+    def test_page_creation_with_duplicate_title_raises_error(self):
+        Page.objects.create(title="Duplicate Title", content="Content 1")
+        with self.assertRaises(ValidationError):
+            duplicate_page = Page(title="Duplicate Title", content="Content 2")
+            duplicate_page.full_clean()  # This will trigger the validation
+            duplicate_page.save()
+
+    def test_page_creation_with_long_title_raises_error(self):
+        long_title = "a" * 201  # Exceeds the max_length of 200
+        page = Page(title=long_title, content="Test Content")
+        with self.assertRaises(ValidationError):
+            page.full_clean()  # This will trigger the validation
+            page.save()
+
+    def test_page_creation_with_invalid_status_raises_error(self):
+        page = Page(title="Test Page", content="Test Content", page_status="invalid_status")
+        with self.assertRaises(ValidationError):
+            page.full_clean()  # This will trigger the validation
+            page.save()
+
+    def test_page_creation_with_invalid_link_location_raises_error(self):
+        page = Page(title="Test Page", content="Test Content", page_link_location="invalid_location")
+        with self.assertRaises(ValidationError):
+            page.full_clean()  # This will trigger the validation
+            page.save()
+
+    def test_page_slug_generation_with_special_characters(self):
+        page = Page.objects.create(title="Test Page!@#", content="Test Content")
+        self.assertEqual(page.slug, "test-page")
+
+    def test_page_slug_generation_with_unicode_characters(self):
+        page = Page.objects.create(title="Tést Päge", content="Test Content")
+        self.assertEqual(page.slug, "test-page")
